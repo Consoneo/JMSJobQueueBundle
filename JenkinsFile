@@ -6,8 +6,8 @@ pipeline {
         }
     }
     environment {
-        vendor_name = "consoneo"
-        project_name = "JMSJobQueueBundle"
+        vendor_name = "jms"
+        project_name = "job-queue-bundle"
         version = ""
         composer_repo_snapshot = "https://nexus.consoneo.tech/repository/consoneo-composer-snapshot/packages/upload"
         composer_repo_release = "https://nexus.consoneo.tech/repository/consoneo-composer-release/packages/upload"
