@@ -1,8 +1,13 @@
 <?php
 
 namespace JMS\JobQueueBundle\Entity\Listener;
+use Doctrine\Common\Util\ClassUtils;
 use Doctrine\ORM\Event\LifecycleEventArgs;
+use Doctrine\ORM\Tools\Event\GenerateSchemaEventArgs;
+use Doctrine\Persistence\ManagerRegistry;
 use JMS\JobQueueBundle\Entity\Job;
+use ReflectionProperty;
+use RuntimeException;
 
 /**
  * Provides many-to-any association support for jobs.
@@ -19,10 +24,10 @@ class ManyToAnyListener
     private $registry;
     private $ref;
 
-    public function __construct(\Symfony\Bridge\Doctrine\RegistryInterface $registry)
+    public function __construct(ManagerRegistry $registry)
     {
         $this->registry = $registry;
-        $this->ref = new \ReflectionProperty('JMS\JobQueueBundle\Entity\Job', 'relatedEntities');
+        $this->ref = new ReflectionProperty('JMS\JobQueueBundle\Entity\Job', 'relatedEntities');
         $this->ref->setAccessible(true);
     }
 
@@ -58,12 +63,12 @@ class ManyToAnyListener
 
         $con = $event->getEntityManager()->getConnection();
         foreach ($this->ref->getValue($entity) as $relatedEntity) {
-            $relClass = \Doctrine\Common\Util\ClassUtils::getClass($relatedEntity);
+            $relClass = ClassUtils::getClass($relatedEntity);
             $relId = $this->registry->getManagerForClass($relClass)->getMetadataFactory()->getMetadataFor($relClass)->getIdentifierValues($relatedEntity);
             asort($relId);
 
             if ( ! $relId) {
-                throw new \RuntimeException('The identifier for the related entity "'.$relClass.'" was empty.');
+                throw new RuntimeException('The identifier for the related entity "'.$relClass.'" was empty.');
             }
 
             $con->executeUpdate("INSERT INTO jms_job_related_entities (job_id, related_class, related_id) VALUES (:jobId, :relClass, :relId)", array(
@@ -74,7 +79,7 @@ class ManyToAnyListener
         }
     }
 
-    public function postGenerateSchema(\Doctrine\ORM\Tools\Event\GenerateSchemaEventArgs $event)
+    public function postGenerateSchema(GenerateSchemaEventArgs $event)
     {
         $schema = $event->getSchema();
 
