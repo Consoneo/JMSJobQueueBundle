@@ -25,7 +25,7 @@ class JobsListener
 				}
 			}
 
-			$qb = $args->getEntityManager()->getRepository(Job::class)->createQueryBuilder('jt');
+			$qb = $args->getEntityManager()->getRepository(JobTag::class)->createQueryBuilder('jt');
 			$qb->where($qb->expr()->in('jt.name', array_values($names)));
 
 			foreach($qb->getQuery()->getResult() as $tag) {
