@@ -180,8 +180,12 @@ class RunCommand extends Command
             $this->checkRunningJobs();
             $this->startJobs($workerName, $idleTime, $maxJobs, $restrictedQueues, $queueOptionsDefaults, $queueOptions);
 
-            $waitTimeInMs = random_int(500, 1000);
-            usleep($waitTimeInMs * 1E3);
+            if ($this->isOffPeakPeriod()) {
+                sleep(60 * random_int(10, 15));
+            } else {
+                $waitTimeInMs = random_int(500, 1000);
+                usleep($waitTimeInMs * 1E3);
+            }
         }
 
         if ($this->verbose) {
@@ -196,6 +200,17 @@ class RunCommand extends Command
         if ($this->verbose) {
             $this->output->writeln('All jobs finished, exiting.');
         }
+    }
+
+    private function isOffPeakPeriod(): bool
+    {
+        $now = new \DateTime();
+        $start1 = new \DateTime('20:30');
+        $end1 = new \DateTime('23:59');
+        $start2 = new \DateTime('02:00');
+        $end2 = new \DateTime('07:00');
+
+        return ($now >= $start1 && $now <= $end1) || ($now >= $start2 && $now <= $end2);
     }
 
     private function setupSignalHandlers()
