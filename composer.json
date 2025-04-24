@@ -27,15 +27,13 @@
         "symfony/css-selector": "*",
         "doctrine/doctrine-bundle": "*",
         "doctrine/orm": "*",
-        "symfony/twig-bundle": "*",
         "symfony/form": "*",
         "symfony/validator": "*",
         "phpunit/phpunit": "^6.0",
         "symfony/intl": "*"
     },
     "suggest": {
-        "sensio/framework-extra-bundle": "Required when using the webinterface.",
-        "symfony/twig-bundle": "Required when using the webinterface."
+        "sensio/framework-extra-bundle": "Required when using the webinterface."
     },
     "autoload": {
         "psr-0": { "JMS\\JobQueueBundle": "" }
