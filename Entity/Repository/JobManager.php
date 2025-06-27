@@ -320,7 +320,7 @@ INNER JOIN jms_job_tags jt ON jjt.tag_id = jt.id WHERE r.related_class = :relCla
 
         if (null !== $this->dispatcher && ($job->isRetryJob() || 0 === count($job->getRetryJobs()))) {
             $event = new StateChangeEvent($job, $finalState);
-            $this->dispatcher->dispatch('jms_job_queue.job_state_change', $event);
+            $this->dispatcher->dispatch($event,'jms_job_queue.job_state_change');
             $finalState = $event->getNewState();
         }
 
