@@ -527,7 +527,7 @@ class PersistentRelatedEntitiesCollection implements Collection, Selectable
             return;
         }
 
-        $entities = array();
+        $entities = [];
         foreach ($entitiesPerClass as $className => $ids) {
             $em = $this->registry->getManagerForClass($className);
             $qb = $em->createQueryBuilder()
@@ -549,10 +549,10 @@ class PersistentRelatedEntitiesCollection implements Collection, Selectable
                 $qb->orWhere($expr);
             }
 
-            $entities = array_merge($entities, $qb->getQuery()->getResult());
+            $entities[] = $qb->getQuery()->getResult();
         }
 
-        $this->entities = $entities;
+        $this->entities = empty($entities) ? [] : array_merge(...$entities);
     }
 
     public function findFirst(Closure $p)
