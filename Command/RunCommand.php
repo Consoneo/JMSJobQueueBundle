@@ -35,39 +35,25 @@ use Symfony\Component\Process\Process;
 
 class RunCommand extends Command
 {
-    protected static $defaultName = 'jms-job-queue:run';
+    private string $env;
+    private string $app;
+    private bool $verbose;
+    private OutputInterface $output;
+    private ManagerRegistry $registry;
+    private JobManager $jobManager;
+    private EventDispatcherInterface $dispatcher;
+    private array $runningJobs = [];
+    private bool $shouldShutdown = false;
+    private array $queueOptionsDefault;
+    private array $queueOptions;
 
-    /** @var string */
-    private $env;
-
-    /** @var boolean */
-    private $verbose;
-
-    /** @var OutputInterface */
-    private $output;
-
-    /** @var ManagerRegistry */
-    private $registry;
-
-    /** @var JobManager */
-    private $jobManager;
-
-    /** @var EventDispatcherInterface */
-    private $dispatcher;
-
-    /** @var array */
-    private $runningJobs = array();
-
-    /** @var bool */
-    private $shouldShutdown = false;
-
-    /** @var array */
-    private $queueOptionsDefault;
-
-    /** @var array */
-    private $queueOptions;
-
-    public function __construct(ManagerRegistry $managerRegistry, JobManager $jobManager, EventDispatcherInterface $dispatcher, array $queueOptionsDefault, array $queueOptions)
+    public function __construct(
+        ManagerRegistry $managerRegistry,
+        JobManager $jobManager,
+        EventDispatcherInterface $dispatcher,
+        array $queueOptionsDefault,
+        array $queueOptions
+    )
     {
         parent::__construct();
 
@@ -81,6 +67,7 @@ class RunCommand extends Command
     protected function configure()
     {
         $this
+            ->setName('jms-job-queue:run')
             ->setDescription('Runs jobs from the queue.')
             ->addOption('max-runtime', 'r', InputOption::VALUE_REQUIRED, 'The maximum runtime in seconds.', 900)
             ->addOption('max-concurrent-jobs', 'j', InputOption::VALUE_REQUIRED, 'The maximum number of concurrent jobs.', 4)
@@ -129,6 +116,7 @@ class RunCommand extends Command
         }
 
         $this->env = $input->getOption('env');
+        $this->app = $input->getOption('app-id');
         $this->verbose = $input->getOption('verbose');
         $this->output = $output;
         $this->getEntityManager()->getConnection()->getConfiguration()->setSQLLogger(null);
@@ -445,11 +433,12 @@ class RunCommand extends Command
 
     private function getBasicCommandLineArgs(): array
     {
-        $args = array(
+        $args = [
             PHP_BINARY,
             $_SERVER['SYMFONY_CONSOLE_FILE'] ?? $_SERVER['argv'][0],
-            '--env='.$this->env
-        );
+            '--env='.$this->env,
+            '--app-id='.$this->app,
+        ];
 
         if ($this->verbose) {
             $args[] = '--verbose';
