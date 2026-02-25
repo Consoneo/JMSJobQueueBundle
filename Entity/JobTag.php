@@ -20,19 +20,16 @@ namespace JMS\JobQueueBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 
-/**
- * @ORM\Entity()
- * @ORM\Table(name = "jms_job_tags")
- *
- * @author Gabriel Poret <gabriel.poret@gmail.com>
- */
+#[ORM\Entity]
+#[ORM\Table(name: 'jms_job_tags')]
 class JobTag
 {
-	/** @ORM\Id @ORM\GeneratedValue(strategy = "AUTO") @ORM\Column(type = "bigint", options = {"unsigned": true}) */
+	#[ORM\Id]
+	#[ORM\GeneratedValue(strategy: 'AUTO')]
+	#[ORM\Column(type: 'bigint', options: ['unsigned' => true])]
 	protected $id;
-	/**
-	 * @ORM\Column(type="string", unique=true)
-	 */
+
+	#[ORM\Column(type: 'string', unique: true)]
 	protected $name;
 
 	/**
