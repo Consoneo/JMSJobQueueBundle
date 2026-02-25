@@ -12,15 +12,15 @@
         }
     ],
     "require": {
-        "php": ">=7.4",
-        "symfony/framework-bundle": "^6.4",
+        "php": "^8.1",
+        "symfony/framework-bundle": "^6.4 || ^7.0",
+        "symfony/error-handler": "^6.4 || ^7.0",
         "doctrine/common": "^3.5",
-        "symfony/process": "^6.4"
+        "doctrine/persistence": "^2.0 || ^3.0",
+        "symfony/process": "^6.4 || ^7.0"
     },
     "require-dev": {
         "doctrine/doctrine-fixtures-bundle": "*",
-        "sensio/framework-extra-bundle": "*",
-        "symfony/class-loader": "*",
         "symfony/yaml": "*",
         "symfony/browser-kit": "*",
         "symfony/finder": "*",
@@ -32,13 +32,9 @@
         "phpunit/phpunit": "^6.0",
         "symfony/intl": "*"
     },
-    "suggest": {
-        "sensio/framework-extra-bundle": "Required when using the webinterface."
-    },
     "autoload": {
-        "psr-0": { "JMS\\JobQueueBundle": "" }
+        "psr-4": { "JMS\\JobQueueBundle\\": "" }
     },
-    "target-dir": "JMS/JobQueueBundle",
     "extra": {
         "branch-alias": {
             "dev-master": "2.0.x-dev"

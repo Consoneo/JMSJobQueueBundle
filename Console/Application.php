@@ -5,7 +5,6 @@ namespace JMS\JobQueueBundle\Console;
 declare(ticks = 10000000);
 
 use Doctrine\DBAL\Statement;
-use Doctrine\DBAL\Types\Type;
 
 use JMS\JobQueueBundle\Entity\Job;
 use Symfony\Bundle\FrameworkBundle\Console\Application as BaseApplication;
@@ -69,7 +68,7 @@ class Application extends BaseApplication
         }
 
         $this->insertStatStmt->bindValue('jobId', $jobId, \PDO::PARAM_INT);
-        $this->insertStatStmt->bindValue('createdAt', new \DateTime(), Type::getType('datetime'));
+        $this->insertStatStmt->bindValue('createdAt', (new \DateTime())->format('Y-m-d H:i:s'));
 
         foreach ($characteristics as $name => $value) {
             $this->insertStatStmt->bindValue('name', $name);
@@ -84,7 +83,7 @@ class Application extends BaseApplication
             return;
         }
 
-        $this->getConnection()->executeUpdate(
+        $this->getConnection()->executeStatement(
             "UPDATE jms_jobs SET stackTrace = :trace, memoryUsage = :memoryUsage, memoryUsageReal = :memoryUsageReal WHERE id = :id",
             array(
                 'id' => $jobId,
