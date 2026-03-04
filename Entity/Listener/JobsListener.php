@@ -1,16 +1,16 @@
 <?php
 
 namespace JMS\JobQueueBundle\Entity\Listener;
-use Doctrine\ORM\Event\LifecycleEventArgs;
+use Doctrine\ORM\Event\PrePersistEventArgs;
 use JMS\JobQueueBundle\Entity\Job;
 use JMS\JobQueueBundle\Entity\JobTag;
 
 
 class JobsListener
 {
-	public function prePersist(LifecycleEventArgs $args)
+	public function prePersist(PrePersistEventArgs $args)
 	{
-		$entity = $args->getEntity();
+		$entity = $args->getObject();
 		if ( ! $entity instanceof Job) {
 			return;
 		}
@@ -25,7 +25,7 @@ class JobsListener
 				}
 			}
 
-			$qb = $args->getEntityManager()->getRepository(JobTag::class)->createQueryBuilder('jt');
+			$qb = $args->getObjectManager()->getRepository(JobTag::class)->createQueryBuilder('jt');
 			$qb->where($qb->expr()->in('jt.name', array_values($names)));
 
 			foreach($qb->getQuery()->getResult() as $tag) {
@@ -34,7 +34,7 @@ class JobsListener
 				$collection->add($tag);
 			}
 
-			foreach ($args->getEntityManager()->getUnitOfWork()->getScheduledEntityInsertions() as $object) {
+			foreach ($args->getObjectManager()->getUnitOfWork()->getScheduledEntityInsertions() as $object) {
 				if ($object instanceof JobTag && in_array($object->getName(), $names)) {
 					unset($names[$object->getName()]);
 					$collection->add($object);

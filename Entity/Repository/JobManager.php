@@ -19,7 +19,7 @@
 namespace JMS\JobQueueBundle\Entity\Repository;
 
 use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Util\ClassUtils;
+use Doctrine\Persistence\Proxy;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Types\Type;
@@ -71,7 +71,7 @@ class JobManager
 
         $job = new Job($command, $args, false);
         $this->getJobManager()->persist($job);
-        $this->getJobManager()->flush($job);
+        $this->getJobManager()->flush();
 
         $firstJob = $this->getJobManager()->createQuery("SELECT j FROM " . Job::class . " j WHERE j.command = :command AND j.args = :args ORDER BY j.id ASC")
              ->setParameter('command', $command)
@@ -82,13 +82,13 @@ class JobManager
         if ($firstJob === $job) {
             $job->setState(Job::STATE_PENDING);
             $this->getJobManager()->persist($job);
-            $this->getJobManager()->flush($job);
+            $this->getJobManager()->flush();
 
             return $job;
         }
 
         $this->getJobManager()->remove($job);
-        $this->getJobManager()->flush($job);
+        $this->getJobManager()->flush();
 
         return $firstJob;
     }
@@ -113,7 +113,7 @@ class JobManager
 
     private function acquireLock($workerName, Job $job)
     {
-        $affectedRows = $this->getJobManager()->getConnection()->executeUpdate(
+        $affectedRows = $this->getJobManager()->getConnection()->executeStatement(
             "UPDATE jms_jobs SET workerName = :worker WHERE id = :id AND workerName IS NULL",
             array(
                 'worker' => $workerName,
@@ -228,11 +228,11 @@ INNER JOIN jms_job_tags jt ON jjt.tag_id = jt.id WHERE r.related_class = :relCla
             throw new \RuntimeException('$entity must be an object.');
         }
 
-        if ($entity instanceof \Doctrine\Common\Persistence\Proxy) {
+        if ($entity instanceof Proxy) {
             $entity->__load();
         }
 
-        $relClass = ClassUtils::getClass($entity);
+        $relClass = $entity instanceof Proxy ? get_parent_class($entity) : get_class($entity);
         $relId = $this->registry->getManagerForClass($relClass)->getMetadataFactory()
                     ->getMetadataFor($relClass)->getIdentifierValues($entity);
         asort($relId);
