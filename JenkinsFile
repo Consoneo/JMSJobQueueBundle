@@ -38,6 +38,7 @@ pipeline {
             }
         }
         stage('archive package') {
+            when { anyOf { expression { BRANCH_NAME ==~ /(master)/ }; buildingTag() } }
             steps {
                 script {
                     echo "creation of ${vendor_name}-${project_name}-${package_version}.zip"
@@ -48,6 +49,7 @@ pipeline {
             }
         }
         stage('Publish package') {
+            when { anyOf { expression { BRANCH_NAME ==~ /(master)/ }; buildingTag() } }
             steps {
                 script {
                     package_path = findFiles(glob: '**/*.zip')[0].path

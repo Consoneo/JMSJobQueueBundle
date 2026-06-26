@@ -28,6 +28,11 @@ use Symfony\Component\ErrorHandler\Exception\FlattenException;
 #[ORM\Table(name: 'jms_jobs')]
 #[ORM\Index(name: 'cmd_search_index', columns: ['command'])]
 #[ORM\Index(name: 'sorting_index', columns: ['state', 'priority', 'id'])]
+// Optimise la requête de polling findStartableJob (workerName IS NULL AND executeAfter < now()
+// AND state = 'pending' ORDER BY priority, id), lancée ~55 req/s par les serveurs de jobs.
+// L'ordre (state, workerName, priority, id) couvre les égalités (state + workerName IS NULL)
+// puis sert l'ORDER BY sans filesort ; executeAfter reste un filtre résiduel. Cf. C2E-14211.
+#[ORM\Index(name: 'startable_index', columns: ['state', 'workerName', 'priority', 'id'])]
 #[ORM\ChangeTrackingPolicy('DEFERRED_EXPLICIT')]
 class Job
 {
