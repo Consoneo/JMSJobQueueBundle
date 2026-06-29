@@ -111,8 +111,11 @@ class CleanUpCommand extends Command implements CronCommand
             $count++;
 
             $result = $con->executeQuery($incomingDepsSql, array('id' => $job->getId()));
-            if ($result->fetchColumn() !== false) {
-                $em->transactional(function() use ($em, $job) {
+            // DBAL 3 : Result::fetchColumn() supprimé → fetchOne() (1re colonne de la 1re
+            // ligne, false si aucune ligne). ORM 3 : EntityManager::transactional() supprimé
+            // → wrapInTransaction(). Cf. fork Doctrine ORM 3 (CleanUpCommand oublié).
+            if ($result->fetchOne() !== false) {
+                $em->wrapInTransaction(function() use ($em, $job) {
                     $this->resolveDependencies($em, $job);
                     $em->remove($job);
                 });
