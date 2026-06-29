@@ -5,6 +5,8 @@ namespace JMS\JobQueueBundle\Command;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManager;
+use JMS\JobQueueBundle\Console\CronCommand;
+use JMS\JobQueueBundle\Console\ScheduleInSecondInterval;
 use JMS\JobQueueBundle\Entity\Job;
 use JMS\JobQueueBundle\Entity\Repository\JobManager;
 use Symfony\Component\Console\Command\Command;
@@ -12,10 +14,22 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class CleanUpCommand extends Command
+class CleanUpCommand extends Command implements CronCommand
 {
+    // Auto-schedulé toutes les 5 min via jms-job-queue:schedule (tag jms_job_queue.cron_command).
+    // collectStaleJobs() réquisitionne les jobs `running` orphelins (worker mort,
+    // checkedAt < now-5min) → STATE_INCOMPLETE, ce qui annule en cascade leurs dépendants.
+    // Sans ce passage régulier, les dépendants restent `pending` bloqués indéfiniment et
+    // s'accumulent en tête de queue — le backlog qui faisait tourner findPendingJob en boucle.
+    use ScheduleInSecondInterval;
+
     private $jobManager;
     private $registry;
+
+    protected function getScheduleInterval(): int
+    {
+        return 300;
+    }
 
     public function __construct(ManagerRegistry $registry, JobManager $jobManager)
     {
