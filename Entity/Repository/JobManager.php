@@ -95,7 +95,7 @@ class JobManager
 
     public function findStartableJob($workerName, array &$excludedIds = array(), $excludedQueues = array(), $restrictedQueues = array())
     {
-        while (null !== $job = $this->findPendingJob($excludedIds, $excludedQueues, $restrictedQueues)) {
+        while (null !== $job = $this->findPendingJob($excludedIds, $excludedQueues, $restrictedQueues, true)) {
             if ($job->isStartable() && $this->acquireLock($workerName, $job)) {
                 return $job;
             }
@@ -244,7 +244,7 @@ INNER JOIN jms_job_tags jt ON jjt.tag_id = jt.id WHERE r.related_class = :relCla
         return array($relClass, json_encode($relId));
     }
 
-    public function findPendingJob(array $excludedIds = array(), array $excludedQueues = array(), array $restrictedQueues = array())
+    public function findPendingJob(array $excludedIds = array(), array $excludedQueues = array(), array $restrictedQueues = array(), bool $onlyStartable = false)
     {
         $qb = $this->getJobManager()->createQueryBuilder();
         $qb->select('j')->from(Job::class, 'j')
@@ -260,6 +260,29 @@ INNER JOIN jms_job_tags jt ON jjt.tag_id = jt.id WHERE r.related_class = :relCla
 
         $conditions[] = $qb->expr()->eq('j.state', ':state');
         $qb->setParameter('state', Job::STATE_PENDING);
+
+        // $onlyStartable : un job n'est démarrable que si TOUTES ses dépendances sont
+        // FINISHED (cf. Job::isStartable()). On pousse ce filtre dans le SQL via un
+        // NOT EXISTS sur la table de jointure. Sans lui, chaque job bloqué (dépendance
+        // non finie) était ramené puis ré-exclu en PHP à CHAQUE cycle de poll de
+        // findStartableJob — une tempête de SELECT findPendingJob (+ chargement EAGER
+        // des dépendances) proportionnelle au backlog bloqué, qui saturait le CPU.
+        // Avec le filtre, findStartableJob ne reçoit que des jobs réellement démarrables :
+        // plus de re-scan, ~1 requête/cycle. Désactivé par défaut pour préserver le
+        // contrat public (findPendingJob renvoie n'importe quel job pending).
+        if ($onlyStartable) {
+            $conditions[] = $qb->expr()->not(
+                $qb->expr()->exists(
+                    $this->getJobManager()->createQueryBuilder()
+                        ->select('dep.id')
+                        ->from(Job::class, 'dep')
+                        ->where('dep MEMBER OF j.dependencies')
+                        ->andWhere('dep.state != :finishedState')
+                        ->getDQL()
+                )
+            );
+            $qb->setParameter('finishedState', Job::STATE_FINISHED);
+        }
 
         if ( ! empty($excludedIds)) {
             $conditions[] = $qb->expr()->notIn('j.id', ':excludedIds');

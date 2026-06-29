@@ -122,7 +122,9 @@ class JobManagerTest extends BaseTestCase
         $excludedIds = array();
 
         $this->assertSame($c, $this->jobManager->findStartableJob('my-name', $excludedIds));
-        $this->assertEquals(array($b->getId()), $excludedIds);
+        // b (dépendance c non finie) est filtré directement en SQL par findPendingJob :
+        // il n'est plus scanné ni ajouté à $excludedIds (cf. filtre startable, perf poll).
+        $this->assertEquals(array(), $excludedIds);
     }
 
     public function testFindJobByRelatedEntity()
@@ -211,8 +213,11 @@ class JobManagerTest extends BaseTestCase
 		$this->assertEquals('tag', $reloadedB[0]->getTags()->first()->getName());
 	}
 
-    public function testFindStartableJobDetachesNonStartableJobs()
+    public function testFindStartableJobSkipsJobsWithUnfinishedDependencies()
     {
+        // a dépend de b (non finie) → a n'est pas démarrable. Avec le filtre SQL,
+        // findStartableJob ne ramène JAMAIS a : il n'est ni scanné, ni exclu, ni détaché
+        // (avant, a était ramené puis ré-exclu à chaque cycle de poll — la cause du 60 req/s).
         $a = new Job('a');
         $b = new Job('b');
         $a->addDependency($b);
@@ -220,16 +225,40 @@ class JobManagerTest extends BaseTestCase
         $this->em->persist($b);
         $this->em->flush();
 
-        $this->assertTrue($this->em->contains($a));
-        $this->assertTrue($this->em->contains($b));
-
         $excludedIds = array();
         $startableJob = $this->jobManager->findStartableJob('my-name', $excludedIds);
         $this->assertNotNull($startableJob);
         $this->assertEquals($b->getId(), $startableJob->getId());
-        $this->assertEquals(array($a->getId()), $excludedIds);
-        $this->assertFalse($this->em->contains($a));
+        // a n'a pas été scanné : $excludedIds reste vide et a reste managé (pas de detach).
+        $this->assertEquals(array(), $excludedIds);
+        $this->assertTrue($this->em->contains($a));
         $this->assertTrue($this->em->contains($b));
+    }
+
+    public function testFindStartableJobReturnsJobOnceDependenciesAreFinished()
+    {
+        // a dépend de b. Tant que b n'est pas FINISHED, a est filtré en SQL.
+        $a = new Job('a');
+        $b = new Job('b');
+        $a->addDependency($b);
+        $this->em->persist($a);
+        $this->em->persist($b);
+        $this->em->flush();
+
+        // b est le seul démarrable ; a est filtré.
+        $excludedIds = array();
+        $first = $this->jobManager->findStartableJob('worker-1', $excludedIds);
+        $this->assertSame($b->getId(), $first->getId());
+
+        // b terminé → a devient démarrable et est désormais renvoyé.
+        $b->setState(Job::STATE_FINISHED);
+        $this->em->persist($b);
+        $this->em->flush();
+
+        $excludedIds = array();
+        $second = $this->jobManager->findStartableJob('worker-2', $excludedIds);
+        $this->assertNotNull($second);
+        $this->assertSame($a->getId(), $second->getId());
     }
 
     public function testCloseJob()
